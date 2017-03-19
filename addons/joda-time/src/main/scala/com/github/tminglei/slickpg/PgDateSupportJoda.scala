@@ -17,12 +17,12 @@ trait PgDateSupportJoda extends date.PgDateExtensions with utils.PgCommonJdbcTyp
     val jodaDateFormatter = ISODateTimeFormat.date()
     val jodaTimeFormatter = DateTimeFormat.forPattern("HH:mm:ss.SSSSSS")
     val jodaTimeFormatter_NoFraction = DateTimeFormat.forPattern("HH:mm:ss")
-    val jodaDateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS")
-    val jodaDateTimeFormatter_NoFraction = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
+    val jodaDateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSS").withZoneUTC
+    val jodaDateTimeFormatter_NoFraction = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZoneUTC
     val jodaTzTimeFormatter = DateTimeFormat.forPattern("HH:mm:ss.SSSSSSZ")
     val jodaTzTimeFormatter_NoFraction = DateTimeFormat.forPattern("HH:mm:ssZ")
-    val jodaTzDateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSSZ")
-    val jodaTzDateTimeFormatter_NoFraction = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ssZ")
+    val jodaTzDateTimeFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSSZ").withZoneUTC
+    val jodaTzDateTimeFormatter_NoFraction = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ssZ").withZoneUTC
   }
 
   trait JodaDateTimeImplicits extends JodaDateTimeFormatters {
@@ -32,6 +32,17 @@ trait PgDateSupportJoda extends date.PgDateExtensions with utils.PgCommonJdbcTyp
       fnFromString = (s) => LocalTime.parse(s, if (s.indexOf(".") > 0) jodaTimeFormatter else jodaTimeFormatter_NoFraction),
       fnToString = (v) => v.toString(jodaTimeFormatter),
       hasLiteralForm = false)
+
+    implicit val jodaInstantMapper = new GenericJdbcType[Instant]("timestamptz",
+      fnFromString = (s) => Instant.parse(s,
+        if (s.contains(".")) {
+          if (s.contains("+")) { jodaTzDateTimeFormatter } else { jodaDateTimeFormatter }
+        } else {
+          if (s.contains("+")) { jodaTzDateTimeFormatter_NoFraction } else { jodaDateTimeFormatter_NoFraction }
+        }),
+      fnToString = (v) => v.toString(jodaTzDateTimeFormatter),
+      hasLiteralForm = false)
+
     implicit val jodaDateTimeTypeMapper = new GenericJdbcType[LocalDateTime]("timestamp",
       fnFromString = (s) => LocalDateTime.parse(s, if (s.indexOf(".") > 0) jodaDateTimeFormatter else jodaDateTimeFormatter_NoFraction),
       fnToString = (v) => v.toString(jodaDateTimeFormatter),
@@ -55,6 +66,11 @@ trait PgDateSupportJoda extends date.PgDateExtensions with utils.PgCommonJdbcTyp
       new TimeColumnExtensionMethods[LocalDate, LocalTime, LocalDateTime, DateTime, Period, LocalTime](c)
     implicit def jodaTimeOptColumnExtensionMethods(c: Rep[Option[LocalTime]]) =
       new TimeColumnExtensionMethods[LocalDate, LocalTime, LocalDateTime, DateTime, Period, Option[LocalTime]](c)
+
+    implicit def jodaInstantColumnExtensionMethods(c: Rep[Instant]) =
+      new TimestampColumnExtensionMethods[LocalDate, LocalTime, LocalDateTime, DateTime, Period, Instant](c)
+    implicit def jodaInstantOptColumnExtensionMethods(c: Rep[Option[Instant]]) =
+      new TimestampColumnExtensionMethods[LocalDate, LocalTime, LocalDateTime, DateTime, Period, Option[Instant]](c)
 
     implicit def jodaTimestampColumnExtensionMethods(c: Rep[LocalDateTime]) =
       new TimestampColumnExtensionMethods[LocalDate, LocalTime, LocalDateTime, DateTime, Period, LocalDateTime](c)
@@ -98,6 +114,9 @@ trait PgDateSupportJoda extends date.PgDateExtensions with utils.PgCommonJdbcTyp
       def nextLocalDateTime() = nextLocalDateTimeOption().orNull
       def nextLocalDateTimeOption() = r.nextStringOption().map(s => LocalDateTime.parse(s,
         if(s.indexOf(".") > 0 ) jodaDateTimeFormatter else jodaDateTimeFormatter_NoFraction))
+      def nextInstant() = nextInstantOption().orNull
+      def nextInstantOption() = r.nextStringOption().map(s => Instant.parse(s,
+        if(s.indexOf(".") > 0 ) jodaTzDateTimeFormatter else jodaTzDateTimeFormatter_NoFraction))
       def nextZonedDateTime() = nextZonedDateTimeOption().orNull
       def nextZonedDateTimeOption() = r.nextStringOption().map(s => DateTime.parse(s,
         if(s.indexOf(".") > 0 ) jodaTzDateTimeFormatter else jodaTzDateTimeFormatter_NoFraction))
@@ -120,6 +139,11 @@ trait PgDateSupportJoda extends date.PgDateExtensions with utils.PgCommonJdbcTyp
     implicit val getLocalDateTimeOption = mkGetResult(_.nextLocalDateTimeOption())
     implicit val setLocalDateTime = mkSetParameter[LocalDateTime]("timestamp", _.toString(jodaDateTimeFormatter), sqlType = Types.TIMESTAMP)
     implicit val setLocalDateTimeOption = mkOptionSetParameter[LocalDateTime]("timestamp", _.toString(jodaDateTimeFormatter), sqlType = Types.TIMESTAMP)
+
+    implicit val getInstant = mkGetResult(_.nextInstant())
+    implicit val getInstantOption = mkGetResult(_.nextInstantOption())
+    implicit val setInstant = mkSetParameter[Instant]("timestamp", _.toString(jodaTzDateTimeFormatter), sqlType = Types.TIMESTAMP)
+    implicit val setInstantOption = mkOptionSetParameter[Instant]("timestamp", _.toString(jodaTzDateTimeFormatter), sqlType = Types.TIMESTAMP)
 
     implicit val getZonedDateTime = mkGetResult(_.nextZonedDateTime())
     implicit val getZonedDateTimeOption = mkGetResult(_.nextZonedDateTimeOption())

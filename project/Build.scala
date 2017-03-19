@@ -8,6 +8,7 @@ object SlickPgBuild extends Build {
     organization := "com.github.tminglei",
     name := "slick-pg",
     version := "0.11.2",
+    exportJars := true,
 
     scalaVersion := "2.11.7",
     crossScalaVersions := Seq("2.11.7", "2.10.6"),
@@ -96,7 +97,7 @@ object SlickPgBuild extends Build {
       name := "slick-pg_joda-time",
       description := "Slick extensions for PostgreSQL - joda time module",
       libraryDependencies := mainDependencies(scalaVersion.value) ++ Seq(
-        "joda-time" % "joda-time" % "2.8.2",
+        "joda-time" % "joda-time" % "2.9",
         "org.joda" % "joda-convert" % "1.7"
       )
     )
