@@ -113,6 +113,9 @@ trait PgDateExtensions extends JdbcTypesComponent { driver: PostgresDriver =>
     def ---[P2, R](e: Rep[P2])(implicit om: o#arg[INTERVAL, P2]#to[TIMESTAMP, R]) = {
         om.column(DateLibrary.-, n, e.toNode)
       }
+    def part[R](field: Rep[String])(implicit om: o#to[Double, R]) = {
+      om.column(DateLibrary.Part, field.toNode, n)
+    }
     def isFinite[R](implicit om: o#to[Boolean, R]) = om.column(DateLibrary.IsFinite, n)
   }
 
